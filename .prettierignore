@@ -1,0 +1,14 @@
+# Ignore build output
+dist/
+build/
+
+# Ignore node_modules
+node_modules/
+
+# Ignore specific files
+.env
+package-lock.json
+
+# Ignore all files in public except index.html
+public/*
+!public/index.html
