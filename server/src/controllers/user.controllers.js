@@ -1,4 +1,14 @@
 import { User } from "../models/user.model.js";
+import { asyncErrorHandler } from "../utils/asyncErrorHandler.js";
+
+
+
+const userRegisteration = asyncErrorHandler(async(req, res, next) =>{
+    const {fullName , email, phone, password, typeOfUser } = req.body;
+})
+
+
+
 
 const registerUser = async(req,res,)=>{
     const {name, email, password} = req.body;
