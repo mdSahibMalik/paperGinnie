@@ -4,6 +4,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser'
 import { connection, localConnection } from './src/database/connection.js';
 import userRouter from './src/routes/user.route.js';
+import { ApiErrorHandler } from './src/utils/ErrorHandler.js';
 app.get('/', (req, res) => {
     res.status(200).send("server run successfully");
 })
@@ -27,5 +28,6 @@ connection();
 //     })
 // }).catch((err)=> console.log(err));
 
-app.use('/api/v1/user', userRouter);
+app.use('/api/v1/users', userRouter);
+app.use(ApiErrorHandler);
 
