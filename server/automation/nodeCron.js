@@ -1,6 +1,6 @@
 import nodeCron from "node-cron";
-import { User } from "../models/user.model.js";
-import { College } from "../models/college.model.js";
+import { User } from "../src/models/user.model.js";
+import { College } from "../src/models/college.model.js";
 
 const nodeCronFunction = () => {
   nodeCron.schedule("*/25 * * * * *", async() => {
