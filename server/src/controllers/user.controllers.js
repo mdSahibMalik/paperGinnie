@@ -1,3 +1,4 @@
+import { PaperDocument } from "../models/document.model.js";
 import { User } from "../models/user.model.js";
 import { asyncErrorHandler } from "../utils/asyncErrorHandler.js";
 import { ApiErrorHandler } from "../utils/ErrorHandler.js";
@@ -32,7 +33,7 @@ const registerUser = asyncErrorHandler(async (req, res, next) => {
       );
     }
 
-    const createdUser = { fullName, email, phone, password, role};
+    const createdUser = { fullName, email, phone, password, role };
     const user = await User.create(createdUser);
 
     const verificationCode = user.generateVerificationCode();
@@ -46,7 +47,7 @@ const registerUser = asyncErrorHandler(async (req, res, next) => {
         name: user.fullName,
         email: user.email,
         phone: user.phone,
-        role: user.role
+        role: user.role,
       },
     });
   } catch (error) {
@@ -124,14 +125,17 @@ function generateEmailTemplate(verificationCode) {
 </html>
 `;
 }
+
+//! get user
+
 const getUser = async (req, res) => {
-  const { email } = req.body;
-  const user = await User.findOne({ email });
+  const tempUser = req.user;
+  const user = await User.findOne(tempUser.id).select("-password -createdAt -updatedAt -__v -_id -verificationCode -verificationCodeExpire -isVerified");
   console.log(user);
-  res.status(200).json({
+  return res.status(200).json({
     success: true,
     user,
-    message: "user find successfully",
+    message: "user found successfully",
   });
 };
 
@@ -160,7 +164,7 @@ const verifyOTP = asyncErrorHandler(async (req, res, next) => {
 
     // check otp is valid or expire
     if (currentDate > codeExpiryDate) {
-      return next(new ApiErrorHandler(401, "Your OTP expired.."));
+      return next(new ApiErrorHandler(401, "Your OTP has expired.."));
     }
     user.isVerified = true;
     user.verificationCode = null;
@@ -181,7 +185,9 @@ const login = asyncErrorHandler(async (req, res, next) => {
     if (!email || !password) {
       return next(new ApiErrorHandler(401, "All fields are required"));
     }
-    const userExist = await User.findOne({ email, isVerified: true }).select("+password");
+    const userExist = await User.findOne({ email, isVerified: true }).select(
+      "+password"
+    );
     if (!userExist) {
       return next(new ApiErrorHandler(404, "User not found"));
     }
@@ -196,17 +202,53 @@ const login = asyncErrorHandler(async (req, res, next) => {
   }
 });
 
-const uploadDocument = asyncErrorHandler(async (req, res, next) =>{
-  const {name, email, phone } = req.body;
-  const document = req.file;
-    if (!document) {
-    return res.status(400).json({ error: "No file uploaded" });
-  }
-  console.log(name,email, phone, );
-  console.log('the path of the document is : ', document.path);
-  const response = await uploadOnCloudinary(document.path);
-  console.log('cloudinary response is : ', response);
-  console.log(response.url);
-  res.status(200).send('success');
-})
-export { getUser, registerUser, verifyOTP, login, uploadDocument };
+//* get letest paper
+const getLetestPaper = asyncErrorHandler(async (_, res, next) => {
+  const paper = await PaperDocument.find({year: { $in: [2024, 2025] }}).select(
+    "-createdAt -updatedAt -__v -_id"
+  );
+  console.log(paper);
+  return res.status(200).json({
+    success: true,
+    paper,
+    message: "paper sent",
+  });
+});
+
+//* get all paper without any filter
+const getAllPaper = asyncErrorHandler(async (_, res, next) => {
+  const paper = await PaperDocument.find().select(
+    "-createdAt -updatedAt -__v -_id"
+  );
+  console.log(paper);
+  return res.status(200).json({
+    success: true,
+    paper,
+    message: "paper sent",
+  });
+});
+
+//* get paper using a specific year
+const getPaperByYear = asyncErrorHandler(async (req, res, next) => {
+  const year = req.params.year;
+  const paper = await PaperDocument.find({year}).select(
+    "-createdAt -updatedAt -__v -_id"
+  );
+  console.log(paper);
+  return res.status(200).json({
+    success: true,
+    paper,
+    message: "paper sent",
+  });
+});
+
+export {registerUser, verifyOTP, login, getUser,  getLetestPaper, getAllPaper, getPaperByYear };
+
+
+//     paperName: 'COMPUTER FUNDAMENTAL',
+//     year: 2025,
+//     description: 'this is mca exam paper',
+//     department: 'CS&IT',
+//     course: 'MCA',
+//     fileUrl: 'http://res.cloudinary.com/dx1n4sl3c/image/upload/v1759259330/l1nf1zpf7yesnmckjpgw.jpg',
+//     collegeName: 'motherhood'

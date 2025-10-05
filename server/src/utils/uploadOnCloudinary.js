@@ -1,4 +1,5 @@
 import {v2 as cloudinary} from 'cloudinary';
+import fs from 'fs/promises';
 
 cloudinary.config({ 
   cloud_name: process.env.CLOUDINARY_NAME, 
@@ -9,9 +10,10 @@ cloudinary.config({
 const uploadOnCloudinary  = async (localFilePath) =>{
     try {
         const response = await cloudinary.uploader.upload(localFilePath)
-        console.log(`file uploaded on cloudinary and new url is : ${response.url}`);
+        await fs.unlink(localFilePath);
         return response
     } catch (error) {
+        await fs.unlink(localFilePath);
         console.log(error);
         return null
     }

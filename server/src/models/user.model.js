@@ -39,12 +39,7 @@ const userSchema = new mongoose.Schema(
       default: false,
     },
     resetPasswordToken: String,
-    resetPasswordTokenExpire: Date,
-
-    createdAt: {
-      type: Date,
-      default: Date.now,
-    },
+    resetPasswordTokenExpire: Date
   },
   { timestamps: true }
 );
@@ -68,7 +63,7 @@ userSchema.methods.comparePassword = async function (enteredPassword) {
 //* generate jwt token
 
 userSchema.methods.generateJsonWebToken =  function () {
-  return jwt.sign({ id: this._id }, process.env.JWT_SECRET_KEY, {
+  return jwt.sign({ id: this._id, role : this.role, type:"user" }, process.env.JWT_SECRET_KEY, {
     expiresIn: process.env.JWT_EXPIRE_TIME,
   });
 };
