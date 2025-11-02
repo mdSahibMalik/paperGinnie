@@ -1,5 +1,7 @@
 import path from "path";
 import fs from "fs/promises";
+import { v2 as cloudinary, v2 } from "cloudinary";
+import { ObjectId } from "mongodb";
 import { College } from "../models/college.model.js";
 import { PaperDocument } from "../models/document.model.js";
 import { asyncErrorHandler } from "../utils/asyncErrorHandler.js";
@@ -11,13 +13,10 @@ import uploadOnCloudinary from "../utils/uploadOnCloudinary.js";
 
 const registerCollege = asyncErrorHandler(async (req, res, next) => {
   try {
-    const { collegeName, email, phone, password, role } = req.body;
+    const { collegeName, email, phone, password } = req.body;
 
-    if (!collegeName || !email || !phone || !password || !role) {
+    if (!collegeName || !email || !phone || !password) {
       return next(new ApiErrorHandler(400, "All field are required"));
-    }
-    if (role !== "college") {
-      return next(new ApiErrorHandler(400, "choose correct role"));
     }
 
     const userExist = await College.findOne({ email });
@@ -38,8 +37,16 @@ const registerCollege = asyncErrorHandler(async (req, res, next) => {
         )
       );
     }
-
-    const createdUser = { collegeName, email, phone, password, role };
+    const token = crypto.randomUUID();
+    const tokenExpiry = Date.now() + 10 * 60 * 1000;
+    const createdUser = {
+      collegeName,
+      email,
+      phone,
+      password,
+      registerToken: token,
+      registerTokenExpire: tokenExpiry,
+    };
     const newUser = await College.create(createdUser);
 
     const verificationCode = newUser.generateVerificationCode();
@@ -53,12 +60,12 @@ const registerCollege = asyncErrorHandler(async (req, res, next) => {
     return res.status(201).json({
       success: true,
       message: "newUser created successfully",
-      newUser: {
+      user: {
         _id: newUser._id,
         name: newUser.collegeName,
         email: newUser.email,
         phone: newUser.phone,
-        role: newUser.role,
+        token: token,
       },
     });
   } catch (error) {
@@ -140,20 +147,26 @@ function generateEmailTemplate(verificationCode) {
 
 const verifyOTP = asyncErrorHandler(async (req, res, next) => {
   try {
-    const { email, emailOTP, mobileOTP } = req.body;
-    if (!email || !emailOTP || !mobileOTP) {
+    const { token, emailOTP, mobileOTP } = req.body;
+    if (!token || !emailOTP || !mobileOTP) {
       return next(new ApiErrorHandler(400, "All fields are required"));
     }
 
-    const newUser = await College.findOne({ email, isVerified: false })
+    const newUser = await College.findOne({
+      registerToken: token,
+      isVerified: false,
+    })
       .sort({ createdAt: -1 })
       .select(
-        "-password +emailVerificationCode +emailVerificationCodeExpire +mobileVerificationCode +mobileVerificationCodeExpire"
+        "-password +registerTokenExpire +emailVerificationCode +emailVerificationCodeExpire +mobileVerificationCode +mobileVerificationCodeExpire"
       );
     if (!newUser) {
       return next(new ApiErrorHandler(404, "User not found"));
     }
 
+    if (Date.now() > newUser.registerTokenExpire) {
+      return res.status(400).json({ success: false, message: "Token expired" });
+    }
     // check oto is valid or not
 
     if (newUser.emailVerificationCode !== Number(emailOTP)) {
@@ -184,6 +197,8 @@ const verifyOTP = asyncErrorHandler(async (req, res, next) => {
     newUser.emailVerificationCodeExpire = null;
     newUser.mobileVerificationCode = null;
     newUser.mobileVerificationCodeExpire = null;
+    newUser.registerToken = null;
+    newUser.registerTokenExpire = null;
     newUser.save({ validateModifiedOnly: true });
     return res.status(200).json({
       success: true,
@@ -205,7 +220,7 @@ const login = asyncErrorHandler(async (req, res, next) => {
     const userExist = await College.findOne({
       email,
       isVerified: true,
-      isVerifiedByAdmin: true,
+      isVerifiedByAdmin: "verified",
     }).select("+password");
     if (!userExist) {
       return next(new ApiErrorHandler(404, "User not found"));
@@ -226,7 +241,7 @@ const login = asyncErrorHandler(async (req, res, next) => {
 const getCollgeProfile = async (req, res) => {
   const tempUser = req.user;
   const user = await College.findOne(tempUser.id).select(
-    "-password -createdAt -updatedAt -__v -_id -verificationCode -verificationCodeExpire -isVerified -isVerifiedByAdmin -emailVerificationCode -emailVerificationCodeExpire -mobileVerificationCode -mobileVerificationCodeExpire"
+    "-password  -updatedAt -__v  -verificationCode -verificationCodeExpire  -isVerifiedByAdmin -emailVerificationCode -emailVerificationCodeExpire -mobileVerificationCode -mobileVerificationCodeExpire"
   );
   return res.status(200).json({
     success: true,
@@ -239,8 +254,9 @@ const getCollgeProfile = async (req, res) => {
 const createDocument = asyncErrorHandler(async (req, res, next) => {
   const allowedExtensions = [".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png"];
   try {
-    const { paperName, year, description, department, course } = req.body;
+    const { paperName, year, description, department, course, semester } = req.body;
     const paperFile = req.file;
+    //  return res.status(200).json({ success: true, message: "file received" });
     if (!paperFile) {
       return next(new ApiErrorHandler(403, "file should be exist"));
     }
@@ -258,8 +274,11 @@ const createDocument = asyncErrorHandler(async (req, res, next) => {
       );
     }
 
-    if (!paperName || !year || !description || !department || !course) {
+    if (!paperName || !year || !department || !course ||!semester) {
       return next(new ApiErrorHandler(401, "Every field must be needed. "));
+    }
+    if(semester > 12){
+      return next(new ApiErrorHandler(401, "Select valid semester"));
     }
     const parseYear = parseInt(year);
     const currentYear = new Date().getFullYear();
@@ -275,9 +294,10 @@ const createDocument = asyncErrorHandler(async (req, res, next) => {
       year,
       course,
       collegeName,
+      semester
     });
     if (fileExist) {
-      return next(new ApiErrorHandler(403, "file already uploaed "));
+      return next(new ApiErrorHandler(403, "file already uploaded"));
     }
 
     //* upload on cloudinary
@@ -292,19 +312,23 @@ const createDocument = asyncErrorHandler(async (req, res, next) => {
       description,
       department,
       course,
+      semester,
       fileUrl: cloudinaryFile.url,
       collegeName,
+      publicId: cloudinaryFile.public_id,
     });
 
     await paper.save();
     const temp = {
       paperName: paper.paperName,
-      year: 2020,
-      description: "this is mca exam paper",
-      department: "qwwr",
-      course: "CS&IT",
+      year: paper.year,
+      description: paper.description,
+      department: paper.department,
+      course: paper.course,
       fileUrl: paper.fileUrl,
+      semester
     };
+
     return res.status(200).json({
       success: true,
       message: "paper Upload successfully",
@@ -316,4 +340,168 @@ const createDocument = asyncErrorHandler(async (req, res, next) => {
   }
 });
 
-export { registerCollege, verifyOTP, login, createDocument, getCollgeProfile };
+const getPaperOfCollege = asyncErrorHandler(async (req, res, next) => {
+  try {
+    const getUser = req.user;
+    const getuser = await College.findById(getUser.id);
+    // return res.status(200).json({ success: true, message: "user found" });
+
+    const user = await PaperDocument.find({ collegeName: getuser.collegeName });
+    return res.status(200).json({ success: true, message: "user found", user });
+  } catch (error) {
+    next(new ApiErrorHandler(403, "something went wrong", error));
+  }
+});
+
+const getPaperOfCollegeById = asyncErrorHandler(async (req, res, next) => {
+  try {
+    const id = new ObjectId(req.params.id); // Convert to ObjectId
+    const paper = await PaperDocument.findById(id); // ✅ CORRECT USAGE
+
+    if (!paper) {
+      return next(new ApiErrorHandler(404, "Paper not found"));
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Paper found",
+      paper,
+    });
+  } catch (error) {
+    console.error(error);
+    next(new ApiErrorHandler(403, "Something went wrong", error));
+  }
+});
+
+const updatePaperById = asyncErrorHandler(async (req, res, next) => {
+  try {
+    const id = new ObjectId(req.params.id); // Convert to ObjectId
+    const { paperName, year, description, department, course } = req.body;
+    const paperFile = req.file;
+
+    let cloudinaryFile;
+    if (paperFile) {
+      const allowedExtensions = [
+        ".pdf",
+        ".doc",
+        ".docx",
+        ".jpg",
+        ".jpeg",
+        ".png",
+      ];
+      //* check file extension
+      const fileExt = path.extname(paperFile.path).toLowerCase();
+      if (!allowedExtensions.includes(fileExt)) {
+        console.warn(`File type ${fileExt} is not allowed.`);
+        await fs.unlink(paperFile.path); // Delete invalid file
+        return next(
+          new ApiErrorHandler(
+            403,
+            `File type ${fileExt} is not allowed. Only PDF and JPG/JPEG are accepted.`
+          )
+        );
+      }
+      if (paperFile) {
+        //* upload on cloudinary
+        cloudinaryFile = await uploadOnCloudinary(paperFile.path);
+        if (!cloudinaryFile) {
+          return next(
+            new ApiErrorHandler(403, "something went wrong with file upload")
+          );
+        }
+      }
+    }
+
+    const updatedData = {
+      paperName,
+      year,
+      description,
+      fileUrl: cloudinaryFile ? cloudinaryFile.url : undefined,
+      publicId: cloudinaryFile ? cloudinaryFile.public_id : undefined,
+      department,
+      course,
+    };
+
+    const paper = await PaperDocument.findByIdAndUpdate(id, updatedData, {
+      new: true,
+    });
+
+    if (!paper) {
+      return next(new ApiErrorHandler(404, "Paper not found"));
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Paper updated successfully",
+      paper,
+    });
+  } catch (error) {
+    console.error(error);
+    next(new ApiErrorHandler(403, "Something went wrong", error));
+  }
+});
+
+//! delete Cloudinary file function
+const deleteFromCloudinary = asyncErrorHandler(async (req, res, next) => {
+  try {
+    const id = new ObjectId(req.params.id); // Convert to ObjectId
+    if (!id) {
+      return next(new ApiErrorHandler(404, "Paper id is required"));
+    }
+    const paper = await PaperDocument.findById(id).select("+publicId");
+    if (!paper) {
+      return next(new ApiErrorHandler(404, "Paper not found"));
+    }
+    const result = await cloudinary.uploader.destroy(paper.publicId);
+
+    console.log("Cloudinary deletion result:", result);
+    paper.publicId = null;
+    paper.fileUrl = null;
+    await paper.save({ validateModifiedOnly: true });
+    return res.status(200).json({
+      success: true,
+      message: "File deleted successfully",
+      result,
+    });
+  } catch (error) {
+    console.error("Error deleting from Cloudinary:", error);
+    throw error;
+  }
+});
+
+const deletePaperById = asyncErrorHandler(async (req, res, next) => {
+  try {
+    const id = new ObjectId(req.params.id); // Convert to ObjectId
+    if (!id) {
+      return next(new ApiErrorHandler(404, "Paper id is required"));
+    }
+    const paper = await PaperDocument.findById(id).select("+publicId");
+    if (!paper) {
+      return next(new ApiErrorHandler(404, "Paper not found"));
+    }
+    if (paper.publicId) {
+      await cloudinary.uploader.destroy(paper.publicId);
+    }
+
+    await PaperDocument.findByIdAndDelete({ _id: paper._id });
+    return res.status(200).json({
+      success: true,
+      message: "Paper deleted successfully",
+    });
+  } catch (error) {
+    next(ApiErrorHandler(403, "something went wrong"));
+  }
+});
+
+export {
+  registerCollege,
+  verifyOTP,
+  login,
+  createDocument,
+  getCollgeProfile,
+  getPaperOfCollege,
+  getPaperOfCollegeById,
+  updatePaperById,
+  deleteFromCloudinary,
+  deletePaperById,
+};

@@ -34,6 +34,8 @@ const collegeSchema = new mongoose.Schema(
     },
     emailVerificationCode: { type: Number, select: false },
     emailVerificationCodeExpire: { type: Date, select: false },
+    registerToken: { type: String, select: false },
+    registerTokenExpire: { type: Date, select: false },
     mobileVerificationCode: { type: Number, select: false },
     mobileVerificationCodeExpire: { type: Date, select: false },
     isVerified: {

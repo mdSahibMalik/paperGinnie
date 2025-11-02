@@ -27,7 +27,7 @@ userRouter.post("/login", login);
 userRouter.get("/profile",  isAuthenticate,  authorizeRoles("user", "admin"),getUser);
 
 //! protected routes with there role
-userRouter.get("/papers",  isAuthenticate,  authorizeRoles("user", "college", "admin"),getAllPaper);
+userRouter.get("/papers",  getAllPaper);
 userRouter.get("/papers/:year",  isAuthenticate,  authorizeRoles("user", "college", "admin"),getPaperByYear);
 userRouter.get("/letest-papers",  isAuthenticate,  authorizeRoles("user", "college", "admin"),getLetestPaper);
 

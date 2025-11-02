@@ -34,6 +34,8 @@ const userSchema = new mongoose.Schema(
     },
     verificationCode: Number,
     verificationCodeExpire: Date,
+    registerToken: String,
+    registerTokenExpire: Date,
     isVerified: {
       type: Boolean,
       default: false,

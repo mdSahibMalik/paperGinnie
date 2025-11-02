@@ -4,6 +4,7 @@ export const sendToken = async (user, res) => {
     name: user.fullName,
     email: user.email,
     phone: user.phone,
+    role: user.role,
     createdAt: user.createdAt,
   };
   return res
@@ -13,6 +14,13 @@ export const sendToken = async (user, res) => {
         Date.now() + Number(process.env.COOKIE_EXPIRE) * 24 * 60 * 60 * 1000
       ),
       httpOnly: true,
+      secure: false, // ✅ set to true ONLY in production with HTTPS
+      sameSite: "Lax", // ✅ prevent CSRF in most cases
     })
-    .json({token, success: true, tempUser, message: "You Loged in successful" });
+    .json({
+      token,
+      success: true,
+      tempUser,
+      message: "You Loged in successful",
+    });
 };

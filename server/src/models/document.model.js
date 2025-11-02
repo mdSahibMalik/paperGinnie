@@ -20,13 +20,24 @@ const paperSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  semester: {
+    type: Number,
+    required: true,
+    min:1,
+    max:12
+  },
   fileUrl: {
     type: String,
-    required: true,
+    // required: true,
   },
   collegeName: {
     type: String,
     required: true,
+  },
+  publicId:{
+    type:String,
+    // required:true,
+    select:false
   }
 }, {
   timestamps: true // Adds createdAt and updatedAt

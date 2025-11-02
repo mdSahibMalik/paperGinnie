@@ -8,9 +8,12 @@ import uploadOnCloudinary from "../utils/uploadOnCloudinary.js";
 
 const registerUser = asyncErrorHandler(async (req, res, next) => {
   try {
-    const { fullName, email, phone, password, role } = req.body;
+    // console.log("here is register route");
+    // res.status(200).send("this is register route");
 
-    if (!fullName || !email || !phone || !password || !role) {
+    const { fullName, email, phone, password } = req.body;
+
+    if (!fullName || !email || !phone || !password) {
       return next(new ApiErrorHandler(400, "All field are required"));
     }
 
@@ -32,12 +35,20 @@ const registerUser = asyncErrorHandler(async (req, res, next) => {
         )
       );
     }
-
-    const createdUser = { fullName, email, phone, password, role };
+    const token = crypto.randomUUID();
+    const tokenExpiry = Date.now() + 10 * 60 * 1000;
+    const createdUser = {
+      fullName,
+      email,
+      phone,
+      password,
+      registerToken: token,
+      registerTokenExpire: tokenExpiry,
+    };
     const user = await User.create(createdUser);
 
     const verificationCode = user.generateVerificationCode();
-    user.save({ validateBeforeSave: true });
+    await user.save({ validateBeforeSave: true });
     await sendVerificationCode(verificationCode, email);
     return res.status(201).json({
       success: true,
@@ -47,7 +58,7 @@ const registerUser = asyncErrorHandler(async (req, res, next) => {
         name: user.fullName,
         email: user.email,
         phone: user.phone,
-        role: user.role,
+        token: token,
       },
     });
   } catch (error) {
@@ -130,7 +141,9 @@ function generateEmailTemplate(verificationCode) {
 
 const getUser = async (req, res) => {
   const tempUser = req.user;
-  const user = await User.findOne(tempUser.id).select("-password -createdAt -updatedAt -__v -_id -verificationCode -verificationCodeExpire -isVerified");
+  const user = await User.findOne(tempUser.id).select(
+    "-password -createdAt -updatedAt -__v -_id -verificationCode -verificationCodeExpire -isVerified"
+  );
   console.log(user);
   return res.status(200).json({
     success: true,
@@ -141,19 +154,23 @@ const getUser = async (req, res) => {
 
 const verifyOTP = asyncErrorHandler(async (req, res, next) => {
   try {
-    const { email, otp } = req.body;
-    if (!email || !otp) {
+    const { token, otp } = req.body;
+    if (!token || !otp) {
       return next(new ApiErrorHandler(400, "All fields are required"));
     }
 
-    const user = await User.findOne({ email, isVerified: false })
+    const user = await User.findOne({ registerToken: token, isVerified: false })
       .sort({ createdAt: -1 })
       .select("-password");
     if (!user) {
       return next(new ApiErrorHandler(404, "User not found"));
     }
 
-    // check oto is valid or not
+    if (Date.now() > user.registerTokenExpire) {
+      return res.status(400).json({ success: false, message: "Token expired" });
+    }
+
+    // check otp is valid or not
 
     if (user.verificationCode !== Number(otp)) {
       return next(new ApiErrorHandler(403, "Enter valid otp"));
@@ -169,7 +186,10 @@ const verifyOTP = asyncErrorHandler(async (req, res, next) => {
     user.isVerified = true;
     user.verificationCode = null;
     user.verificationCodeExpire = null;
-    user.save({ validateModifiedOnly: true });
+    user.registerToken = null;
+    user.registerTokenExpire = null;
+
+    await user.save({ validateModifiedOnly: true });
     return res.status(200).json({
       success: true,
       message: "OTP varify successfully",
@@ -204,9 +224,9 @@ const login = asyncErrorHandler(async (req, res, next) => {
 
 //* get letest paper
 const getLetestPaper = asyncErrorHandler(async (_, res, next) => {
-  const paper = await PaperDocument.find({year: { $in: [2024, 2025] }}).select(
-    "-createdAt -updatedAt -__v -_id"
-  );
+  const paper = await PaperDocument.find({
+    year: { $in: [2024, 2025] },
+  }).select("-createdAt -updatedAt -__v -_id");
   console.log(paper);
   return res.status(200).json({
     success: true,
@@ -220,7 +240,6 @@ const getAllPaper = asyncErrorHandler(async (_, res, next) => {
   const paper = await PaperDocument.find().select(
     "-createdAt -updatedAt -__v -_id"
   );
-  console.log(paper);
   return res.status(200).json({
     success: true,
     paper,
@@ -231,7 +250,7 @@ const getAllPaper = asyncErrorHandler(async (_, res, next) => {
 //* get paper using a specific year
 const getPaperByYear = asyncErrorHandler(async (req, res, next) => {
   const year = req.params.year;
-  const paper = await PaperDocument.find({year}).select(
+  const paper = await PaperDocument.find({ year }).select(
     "-createdAt -updatedAt -__v -_id"
   );
   console.log(paper);
@@ -242,8 +261,15 @@ const getPaperByYear = asyncErrorHandler(async (req, res, next) => {
   });
 });
 
-export {registerUser, verifyOTP, login, getUser,  getLetestPaper, getAllPaper, getPaperByYear };
-
+export {
+  registerUser,
+  verifyOTP,
+  login,
+  getUser,
+  getLetestPaper,
+  getAllPaper,
+  getPaperByYear,
+};
 
 //     paperName: 'COMPUTER FUNDAMENTAL',
 //     year: 2025,
