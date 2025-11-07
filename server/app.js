@@ -9,7 +9,7 @@ import collegeRouter from "./src/routes/college.route.js";
 import adminRouter from "./src/routes/admin.route.js";
 import { contactUs } from "./src/controllers/contact.controllers.js";
 import { subscribe } from "./src/controllers/user.controllers.js";
-// import { nodeCronFunction } from "./src/utils/nodeCron.js";
+import { nodeCronFunction } from "./automation/nodeCron.js";
 
 //! cors policy and code 
 app.use(
@@ -67,4 +67,4 @@ app.use((err, req, res, next) => {
   }
 });
 
-// nodeCronFunction();
+nodeCronFunction();
