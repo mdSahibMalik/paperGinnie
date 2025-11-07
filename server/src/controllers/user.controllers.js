@@ -1,4 +1,5 @@
 import { PaperDocument } from "../models/document.model.js";
+import { Subscribe } from "../models/subscribe.js";
 import { User } from "../models/user.model.js";
 import { asyncErrorHandler } from "../utils/asyncErrorHandler.js";
 import { ApiErrorHandler } from "../utils/ErrorHandler.js";
@@ -46,7 +47,6 @@ const registerUser = asyncErrorHandler(async (req, res, next) => {
       registerTokenExpire: tokenExpiry,
     };
     const user = await User.create(createdUser);
-
     const verificationCode = user.generateVerificationCode();
     await user.save({ validateBeforeSave: true });
     await sendVerificationCode(verificationCode, email);
@@ -260,6 +260,23 @@ const getPaperByYear = asyncErrorHandler(async (req, res, next) => {
     message: "paper sent",
   });
 });
+const subscribe = asyncErrorHandler(async (req, res, next) => {
+  const email = req.body.email;
+  if (!email) {
+    res.status(401).json({success:false, message:"Email is required" })
+  }
+  const existEmail = await Subscribe.find({email});
+  if(existEmail){
+    return next(new ApiErrorHandler(403, 'email already registered'));
+  }
+  await Subscribe.insertOne({email});
+  return res.status(200).json({
+    success: true,
+    message: "Thanks for subscribing.",
+  });
+});
+
+
 
 export {
   registerUser,
@@ -269,6 +286,7 @@ export {
   getLetestPaper,
   getAllPaper,
   getPaperByYear,
+  subscribe
 };
 
 //     paperName: 'COMPUTER FUNDAMENTAL',

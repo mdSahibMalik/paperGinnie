@@ -1,23 +1,15 @@
-import dotenv from 'dotenv';
+import dotenv from "dotenv";
 dotenv.config();
 import mongoose from "mongoose";
- const connection = () => {
-  const connect =  mongoose.connect(process.env.MONGODB_LOCAL_URI,)
-  connect.then((conn)=>{
-    console.log(`MONGODB CONNECT SUCCESSFULLY AT :- ${conn.connection.host}`);
-  })
-  .catch((err) =>{
-    console.log(err,'MONOGO CONNECTION FAILED');
-  })
+const connection = async () => {
+  try {
+    const conn = await mongoose.connect(process.env.MONGODB_URI);
+    console.log(`✅ MONGODB CONNECTED SUCCESSFULLY AT: ${conn.connection.host}`);
+
+  } catch (err) {
+    console.error("❌ MONGODB CONNECTION FAILED:", err.message);
+    process.exit(1);
+  }
 };
 
-const localConnection = () =>{
-  try {
-    const connect = mongoose.connect('mongodb://localhost:27017/paperGinnie')
-  } catch (error) {
-    console.log('something went wrong wiht database ');
-  }
-
-}
-
-export {connection, localConnection};
+export { connection };

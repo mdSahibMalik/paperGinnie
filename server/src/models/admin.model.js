@@ -29,11 +29,8 @@ const adminSchema = new mongoose.Schema(
     resetPasswordTokenExpire: {
       type: Date,
       select: false,
-    },
-    createdAt: { type: Date, select: false },
-    updatedAt: { type: Date, select: false },
-  },
-  { timestamps: true }
+    }
+  }
 );
 
 //* hash password before save

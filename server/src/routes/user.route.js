@@ -6,12 +6,13 @@ import {
   login,
   getAllPaper,
   getPaperByYear,
-  getLetestPaper,
+  getLetestPaper
 } from "../controllers/user.controllers.js";
 // import { upload } from "../../middleware/multer.js";
 import { isAuthenticate } from "../../middleware/isAuthenticate.js";
 import authorizeRoles from "../../middleware/roleMiddleware.js";
 import { limiter } from "../../middleware/rateLimit.js";
+import { logout } from "../utils/Logout.js";
 
 const userRouter = express.Router();
 
@@ -22,6 +23,7 @@ userRouter.get("/testlimit",limiter, (req, res) =>{
 });
 userRouter.post("/verify_otp", verifyOTP);
 userRouter.post("/login", login);
+userRouter.post("/logout", logout);
 
 //! get user's profile
 userRouter.get("/profile",  isAuthenticate,  authorizeRoles("user", "admin"),getUser);

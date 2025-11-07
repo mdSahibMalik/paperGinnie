@@ -254,7 +254,15 @@ const getCollgeProfile = async (req, res) => {
 const createDocument = asyncErrorHandler(async (req, res, next) => {
   const allowedExtensions = [".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png"];
   try {
-    const { paperName, year, description, department, course, semester } = req.body;
+    const {
+      paperName,
+      year,
+      description,
+      department,
+      course,
+      semester,
+      collegeName,
+    } = req.body;
     const paperFile = req.file;
     //  return res.status(200).json({ success: true, message: "file received" });
     if (!paperFile) {
@@ -274,10 +282,10 @@ const createDocument = asyncErrorHandler(async (req, res, next) => {
       );
     }
 
-    if (!paperName || !year || !department || !course ||!semester) {
+    if (!paperName || !year || !department || !course || !semester) {
       return next(new ApiErrorHandler(401, "Every field must be needed. "));
     }
-    if(semester > 12){
+    if (semester > 12) {
       return next(new ApiErrorHandler(401, "Select valid semester"));
     }
     const parseYear = parseInt(year);
@@ -285,16 +293,22 @@ const createDocument = asyncErrorHandler(async (req, res, next) => {
     if (parseYear > currentYear || parseYear < 2010) {
       return next(new ApiErrorHandler(401, "year should be correct"));
     }
-    const getUser = req.user;
-    const user = await College.findById(getUser.id);
-    const collegeName = user.collegeName;
+
+    let clgName;
+    if (collegeName.length > 0) {
+      clgName = collegeName;
+    } else {
+      const getUser = req.user;
+      const user = await College.findById(getUser.id);
+      clgName = user.collegeName;
+    }
 
     const fileExist = await PaperDocument.findOne({
       paperName,
       year,
       course,
-      collegeName,
-      semester
+      collegeName: clgName,
+      semester,
     });
     if (fileExist) {
       return next(new ApiErrorHandler(403, "file already uploaded"));
@@ -314,7 +328,7 @@ const createDocument = asyncErrorHandler(async (req, res, next) => {
       course,
       semester,
       fileUrl: cloudinaryFile.url,
-      collegeName,
+      collegeName: clgName,
       publicId: cloudinaryFile.public_id,
     });
 
@@ -326,7 +340,8 @@ const createDocument = asyncErrorHandler(async (req, res, next) => {
       department: paper.department,
       course: paper.course,
       fileUrl: paper.fileUrl,
-      semester
+      collegeName: paper.collegeName,
+      semester,
     };
 
     return res.status(200).json({
@@ -343,11 +358,23 @@ const createDocument = asyncErrorHandler(async (req, res, next) => {
 const getPaperOfCollege = asyncErrorHandler(async (req, res, next) => {
   try {
     const getUser = req.user;
-    const getuser = await College.findById(getUser.id);
-    // return res.status(200).json({ success: true, message: "user found" });
 
-    const user = await PaperDocument.find({ collegeName: getuser.collegeName });
-    return res.status(200).json({ success: true, message: "user found", user });
+    if (getUser.role === "admin") {
+      const user = await PaperDocument.find();
+      return res
+        .status(200)
+        .json({ success: true, message: "user found", user });
+    } else {
+      const getuser = await College.findById(getUser.id);
+      // return res.status(200).json({ success: true, message: "user found" });
+
+      const user = await PaperDocument.find({
+        collegeName: getuser.collegeName,
+      });
+      return res
+        .status(200)
+        .json({ success: true, message: "user found", user });
+    }
   } catch (error) {
     next(new ApiErrorHandler(403, "something went wrong", error));
   }
