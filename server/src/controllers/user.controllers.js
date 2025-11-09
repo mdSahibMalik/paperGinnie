@@ -289,7 +289,7 @@ export {
   subscribe
 };
 
-//     paperName: 'COMPUTER FUNDAMENTAL',
+//     paperName: 'COMPUTER FUNDAMENTAL', okk
 //     year: 2025,
 //     description: 'this is mca exam paper',
 //     department: 'CS&IT',
