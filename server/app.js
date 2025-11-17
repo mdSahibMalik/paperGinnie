@@ -11,12 +11,12 @@ import { contactUs } from "./src/controllers/contact.controllers.js";
 import { subscribe } from "./src/controllers/user.controllers.js";
 import { nodeCronFunction } from "./automation/nodeCron.js";
 
-//! cors policy and code 
+//! cors policy and code
 app.use(
   cors({
-    origin: "https://paperclient1.onrender.com",
+    origin: "http://localhost:5173",
     methods: ["GET", "POST", "DELETE", "PUT"],
-    credentials: true 
+    credentials: true,
   })
 );
 
@@ -34,8 +34,6 @@ app.use(cookieParser());
 //         console.log('MongoDB connection succrssfully');
 //     })
 // }).catch((err)=> console.log(err));
-
-
 
 //! All api's routes start from here
 // app.get('/',(req, res) =>{

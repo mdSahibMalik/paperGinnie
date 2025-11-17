@@ -1,3 +1,6 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import { v2 as cloudinary } from "cloudinary";
 import fs from "fs";
 
@@ -9,12 +12,21 @@ cloudinary.config({
 
 const uploadOnCloudinary = async (localFilePath) => {
   try {
-    const response = await cloudinary.uploader.upload(localFilePath);
-    fs.unlink(localFilePath);
+    if (!localFilePath) return null;
+
+    const response = await cloudinary.uploader.upload(localFilePath, {
+      resource_type: "auto", // supports PDF, DOCX, image, video, everything
+    });
+
+    // delete file only if exists
+    if (fs.existsSync(localFilePath)) fs.unlinkSync(localFilePath);
+
     return response;
   } catch (error) {
-    fs.unlink(localFilePath);
-    console.log(error);
+    console.error("Cloudinary Upload Error:", error);
+
+    if (fs.existsSync(localFilePath)) fs.unlinkSync(localFilePath);
+
     return null;
   }
 };
