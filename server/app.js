@@ -15,7 +15,7 @@ import { nodeCronFunction } from "./automation/nodeCron.js";
 app.use(
   cors({
     origin: ["http://localhost:5173",
-    "https://paperclient1.onrender.com"]
+    "https://paperclient1.onrender.com"],
     methods: ["GET", "POST", "DELETE", "PUT"],
     credentials: true,
   })
