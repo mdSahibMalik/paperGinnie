@@ -295,7 +295,7 @@ const createDocument = asyncErrorHandler(async (req, res, next) => {
     }
 
     let clgName;
-    if (collegeName.length > 0) {
+    if (collegeName?.length > 0) {
       clgName = collegeName;
     } else {
       const getUser = req.user;
