@@ -18,6 +18,7 @@ app.use(
     "https://paperclient1.onrender.com"],
     methods: ["GET", "POST", "DELETE", "PUT"],
     credentials: true,
+    allowedHeaders: ["Content-Type", "Authorization"]
   })
 );
 
