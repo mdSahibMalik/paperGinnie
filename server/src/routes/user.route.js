@@ -8,7 +8,6 @@ import {
   getPaperByYear,
   getLetestPaper,
   solvePaper,
-  solvePaperWithOpenRouter,
   forgetPassword,
   resetPassword
 } from "../controllers/user.controllers.js";
@@ -39,7 +38,6 @@ userRouter.get("/papers",  getAllPaper);
 userRouter.get("/papers/:year",  isAuthenticate,  authorizeRoles("user", "college", "admin"),getPaperByYear);
 userRouter.get("/letest-papers",  isAuthenticate,  authorizeRoles("user", "college", "admin"),getLetestPaper);
 userRouter.post("/solve-paper",  isAuthenticate,  authorizeRoles("user", "college", "admin"),solvePaper);
-userRouter.post("/solve",  isAuthenticate,  authorizeRoles("user", "college", "admin"),solvePaperWithOpenRouter);
 
 
 // userRouter.get("/profile",  isAuthenticate,  authorizeRoles("college", "admin"),  (req, res) => {

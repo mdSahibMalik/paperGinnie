@@ -467,117 +467,6 @@ const solvePaper = asyncErrorHandler(async (req, res, next) => {
   }
 });
 
-//! **************************** solve paper with open router api start here ******************************************
-
-const promptForOpenRouter = `
-You are an AI system for processing and solving exam question papers.
-
-Input:
-The following text is extracted using OCR from a scanned question paper:
-
-{{OCR_TEXT}}
-
-Your Tasks:
-
-1. Ignore headers, roll numbers, page numbers, paper codes, instructions, footers, watermarks, and decorative text.
-2. Extract only valid exam questions.
-3. Clean and rewrite each question clearly and completely.
-4. Solve each question step by step.
-5. Assign each question:
-   - A sequential question_number starting from 1
-   - A unique random ID in the format "q_<random_string>"
-
-6. For each question, suggest 3 to 5 highly relevant YouTube learning videos that would help a student understand or solve the question.
-
-Each video must include:
-- title
-- channel
-- search_query (so it can be searched on YouTube)
-
-7. Return the final output strictly in the following JSON format:
-
-{
-  "questions": [
-    {
-      "question_number": 1,
-      "question_id": "q_x8d9s3",
-      "question_text": "Cleaned full question here",
-      "solution": "Step-by-step solution here",
-      "video_suggestions": [
-        {
-          "title": "Video title",
-          "channel": "Channel name",
-          "search_query": "Exact search query to find this video on YouTube"
-        }
-      ]
-    }
-  ]
-}
-
-Rules:
-- Output must be valid JSON only.
-- Do NOT include any text outside the JSON.
-- Every question must have 3–5 video suggestions.
-- Video suggestions must be realistic and educational (Khan Academy, Physics Wallah, Unacademy, Organic Chemistry Tutor, etc).
-- Solutions must be accurate, detailed, and step-by-step.
-- Unique IDs must be different for every question.
-`;
-
-const solvePaperWithOpenRouter = asyncErrorHandler(async (req, res, next) => {
-  try {
-    const { imageUrl } = req.body;
-    const ocrText = await extractTextFromImageForOpenRouter(imageUrl);
-
-    if (!ocrText || ocrText.trim().length < 20) {
-      return res.status(400).json({ error: "Valid OCR text is required" });
-    }
-
-    // Inject OCR text into prompt
-    const finalPrompt = promptForOpenRouter.replace("{{OCR_TEXT}}", ocrText);
-
-    const response = await axios.post(
-      "https://openrouter.ai/api/v1/chat/completions",
-      {
-        model: "openai/gpt-4o-mini",
-        response_format: { type: "json_object" }, // forces JSON
-        messages: [
-          {
-            role: "system",
-            content: finalPrompt,
-          },
-          {
-            role: "user",
-            content: "Process this OCR exam text and follow all rules exactly.",
-          },
-        ],
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-
-    const aiText = response.data.choices[0].message.content;
-    // Safely parse JSON
-    let parsed;
-    try {
-      parsed = JSON.parse(aiText);
-    } catch (err) {
-      console.error("Invalid JSON from AI:", aiText);
-      return res.status(500).json({
-        error: "AI returned invalid JSON",
-        raw: aiText,
-      });
-    }
-
-    res.status(200).json(parsed);
-  } catch (error) {
-    console.error(error.response?.data || error);
-    return next(new ApiErrorHandler(500, "OpenRouter OCR processing failed"));
-  }
-});
 
 export {
   registerUser,
@@ -590,7 +479,6 @@ export {
   solvePaper,
   getAllPaper,
   getPaperByYear,
-  solvePaperWithOpenRouter,
   subscribe,
 };
 
