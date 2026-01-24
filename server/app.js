@@ -11,7 +11,7 @@ import { contactUs } from "./src/controllers/contact.controllers.js";
 import { subscribe } from "./src/controllers/user.controllers.js";
 import { nodeCronFunction } from "./automation/nodeCron.js";
 
-//! cors policy and code
+//! cors policy and code one
 app.use(
   cors({
     origin: ["http://localhost:5173",
@@ -27,20 +27,7 @@ app.use(express.urlencoded({ extended: true, limit: "10kb" }));
 app.use(express.json({ limit: "10mb" }));
 app.use(cookieParser());
 
-// connection();
-// localConnection().then(() =>{
-//     app.on('error', error =>{
-//         console.error('MONGODB CONNECTION FAILED' , error);
-//     })
-//     app.listen(process.env.PORT,()=>{
-//         console.log('MongoDB connection succrssfully');
-//     })
-// }).catch((err)=> console.log(err));
 
-//! All api's routes start from here
-// app.get('/',(req, res) =>{
-//   res.status(200).send("this is get route")
-// })
 
 app.use("/api/v1/users", userRouter);
 app.post("/api/v1/contact", contactUs);
