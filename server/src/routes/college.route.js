@@ -3,11 +3,13 @@ import {
   createDocument,
   deleteFromCloudinary,
   deletePaperById,
+  forgetPassword,
   getCollgeProfile,
   getPaperOfCollege,
   getPaperOfCollegeById,
   login,
   registerCollege,
+  resetPassword,
   updatePaperById,
   verifyOTP,
 } from "../controllers/college.controllers.js";
@@ -21,6 +23,8 @@ const collegeRouter = express.Router();
 collegeRouter.post("/register", registerCollege);
 collegeRouter.post("/verify-otp", verifyOTP);
 collegeRouter.post("/login", login);
+collegeRouter.post("/forget-password", forgetPassword);
+collegeRouter.post("/reset-password/:token", resetPassword);
 
 //! protected route for colleges
 collegeRouter.post(

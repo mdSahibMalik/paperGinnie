@@ -10,6 +10,7 @@ import { sendMail } from "../utils/sendMail.js";
 import { sendMobileSmsByTwilio } from "../utils/sendSmsByTwillio.js";
 import { sendToken } from "../utils/sendToken.js";
 import uploadOnCloudinary from "../utils/uploadOnCloudinary.js";
+import crypto from "crypto";
 
 const registerCollege = asyncErrorHandler(async (req, res, next) => {
   try {
@@ -235,6 +236,118 @@ const login = asyncErrorHandler(async (req, res, next) => {
     next(new ApiErrorHandler(403, "somethin went wrong at the login time"));
   }
 });
+
+//* reset & forget password
+
+const forgetPassword = asyncErrorHandler(async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return next(new ApiErrorHandler(400, "Email is required"));
+    }
+    const user = await College.findOne({ email });
+    if (!user) {
+      return next(new ApiErrorHandler(404, "User not found"));
+    }
+    const resetToken = user.generateResetPasswordToken();
+    await user.save({ validateModifiedOnly: true });
+    const resetPasswordUrl = `${process.env.FRONTEND_URL}/college-reset-password/${resetToken}`;
+    const message = `
+      <html>
+        <head>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              background-color: #f4f4f4;
+              margin: 0;
+              padding: 20px;
+            }
+            .container {
+              background-color: #ffffff;
+              padding: 20px;
+              border-radius: 8px;
+              box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            }
+            .code-box {
+              background-color: #e9ecef;
+              padding: 15px;
+              border-radius: 5px;
+              font-family: monospace;
+              font-size: 18px;
+              text-align: center;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h2>Reset Your Password</h2>
+            <p>Hi ${user.fullName},</p>
+            <p>You requested a password reset. Click the button below to reset your password:</p>
+
+            <div class="code-box">
+              <a href="${resetPasswordUrl}" style="background-color:#337ab7; color:white; padding:15px; text-decoration:none; border-radius:5px;margin-top:32px;margin-bottom:32px;">Reset Password</a>
+            </div>
+
+            <p>If you didn't request this, please ignore this email.</p>
+
+            <p>Thanks,<br>The Team</p>
+
+            <div class="footer">
+              &copy; ${new Date().getFullYear()} Your Company. All rights reserved.
+            </div>
+          </div>
+        </body>
+      </html>`;
+    await sendMail({ message, email, subject: "reset your password" });
+    return res.status(200).json({
+      success: true,
+      message:
+        "An email has been sent to your registered email address with instructions to reset your password.",
+    });
+  } catch (error) {
+    next(new ApiErrorHandler(500, error));
+  }
+});
+
+//*  reset password
+const resetPassword = asyncErrorHandler(async (req, res, next) => {
+  try {
+    const { token } = req.params;
+    const { password, confirmPassword } = req.body;
+    if (!token || !password || !confirmPassword) {
+      return next(new ApiErrorHandler(400, "All fields are required"));
+    }
+    if (password !== confirmPassword) {
+      return next(new ApiErrorHandler(400, "password dose not match"));
+    }
+
+    // 🔐 Hash token before comparing
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+    const user = await College.findOne({
+      resetPasswordToken: hashedToken,
+      resetPasswordTokenExpire: { $gt: Date.now() },
+    }).select("+password");
+    if (!user) {
+      return next(new ApiErrorHandler(404, "Invalid or expired token"));
+    }
+
+    user.password = password;
+    user.resetPasswordToken = null;
+    user.resetPasswordTokenExpire = null;
+
+    await user.save({ validateModifiedOnly: true });
+
+    return res.status(200).json({
+      success: true,
+      message: "Password has been reset successfully",
+    });
+  } catch (error) {
+    next(new ApiErrorHandler(500, error));
+  }
+});
+
+
 
 //! get college profile
 
@@ -524,6 +637,8 @@ export {
   registerCollege,
   verifyOTP,
   login,
+  forgetPassword,
+  resetPassword,
   createDocument,
   getCollgeProfile,
   getPaperOfCollege,

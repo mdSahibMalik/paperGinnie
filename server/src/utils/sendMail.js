@@ -1,5 +1,4 @@
 import nodeMailer from "nodemailer";
-import { ApiErrorHandler } from "./ErrorHandler.js";
 
 export const sendMail = async ({message, email, subject, next}) => {
   try {
@@ -22,6 +21,7 @@ export const sendMail = async ({message, email, subject, next}) => {
     };
 
     await transporter.sendMail(option);
+    
   } catch (error) {
    return "something went wrong";
   }

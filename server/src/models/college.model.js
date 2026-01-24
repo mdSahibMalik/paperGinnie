@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 
 const collegeSchema = new mongoose.Schema(
   {
@@ -47,10 +48,8 @@ const collegeSchema = new mongoose.Schema(
       enum: ["pending", "verified", "rejected"],
       default: "pending",
     },
-    resetPasswordToken: { type: String, select: false },
-    resetPasswordTokenExpire: { type: Date, select: false },
-    createdAt: { type: Date, select: false },
-    updatedAt: { type: Date, select: false },
+    resetPasswordToken: String,
+    resetPasswordTokenExpire: Date,
   },
   { timestamps: true }
 );
@@ -111,5 +110,13 @@ collegeSchema.methods.generateVerificationCodeForMobile = function () {
   this.mobileVerificationCodeExpire = Date.now() + 5 * 60 * 1000;
   return code;
 };
+
+
+collegeSchema.methods.generateResetPasswordToken = function () {
+const resetToken = crypto.randomBytes(32).toString("hex")
+this.resetPasswordToken = crypto.createHash("sha256").update(resetToken).digest("hex");
+this.resetPasswordTokenExpire = Date.now() + 15 * 60 * 1000; // 15 minutes
+return resetToken;
+}
 
 export const College = mongoose.model("College", collegeSchema);
