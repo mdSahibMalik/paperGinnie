@@ -8,6 +8,9 @@ import { sendToken } from "../utils/sendToken.js";
 import axios from "axios";
 import crypto from "crypto";
 
+import dotenv from "dotenv";
+dotenv.config();
+
 const registerUser = asyncErrorHandler(async (req, res, next) => {
   try {
     // console.log("here is register route");
@@ -387,83 +390,221 @@ const subscribe = asyncErrorHandler(async (req, res, next) => {
   });
 });
 
-//! **************************** solve paper code start here ******************************************
+// //! **************************** solve paper code start here ******************************************
+// import Tesseract from "tesseract.js";
+// import { GoogleGenerativeAI } from "@google/generative-ai";
+
+// async function extractTextFromImage(imageUrl) {
+//   const {
+//     data: { text },
+//   } = await Tesseract.recognize(imageUrl, "eng");
+//   return text;
+// }
+// async function extractTextFromImageForOpenRouter(imageUrl) {
+//   const {
+//     data: { text },
+//   } = await Tesseract.recognize(imageUrl, "eng");
+//   return text
+//     .replace(/\n{2,}/g, "\n")
+//     .replace(/[^\x20-\x7E\n]/g, "")
+//     .slice(0, 12000);
+// }
+// const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+// async function getQuestionsAndAnswers(ocrText) {
+//   const model = genAI.getGenerativeModel({
+//     model: "gemini-flash-lite-latest", // free text model
+//   });
+
+//   const prompt1 = `You are an assistant for processing and solving exam question papers.
+
+//   Input:
+//   The following text is extracted using OCR from a question paper:
+//   ${ocrText}
+//   Your Tasks:
+//   1. Ignore headers, paper codes, instructions, etc.
+//   2. Extract only the questions.
+//   3. Solve each question step by step.
+//   4. Assign each question:
+//       - a sequential question number
+//       - a unique ID (format: "q_<random_string>")
+//   5. Solve each question step by step.
+//   6. Return the final response strictly in the following JSON format:
+
+//   {
+//     "questions": [
+//       {
+//         "question_number": <number>,
+//         "question_id": "q_<unique_id>",
+//         "question_text": "<cleaned_question_text>",
+//         "solution": "<step_by_step_solution>"
+//       } 
+//     ]
+//   }
+
+//   Rules:
+//   - Output must be valid JSON.
+//   - Do not include any text outside the JSON.
+//   - Ensure unique_id is random for each question.
+//   - Ensure question_text is clean and complete.
+//   - Solutions must be correct, clear, and step-by-step.
+//   `;
+
+//   const result = await model.generateContent([{ text: prompt1 }]);
+//   return result.response.text();
+// }
+// const solvePaper = asyncErrorHandler(async (req, res, next) => {
+//   try {
+//     const { imageUrl } = req.body;
+//     if (!imageUrl) return res.status(400).json({ error: "Image URL required" });
+
+//     const ocrText = await extractTextFromImage(imageUrl);
+//     // console.log('ocr text is :- ', ocrText);
+//     const solution = await getQuestionsAndAnswers(ocrText);
+
+//     res.status(200).json({ solution, message: "paper solved successfully" });
+//   } catch (err) {
+//     console.error(err);
+//     res
+//       .status(500)
+//       .json({ error: "Something went wrong", details: err.message });
+//   }
+// });
+
+
 import Tesseract from "tesseract.js";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import OpenAI from "openai";
+
+// -------------------------------------
+// OCR FUNCTIONS
+// -------------------------------------
 
 async function extractTextFromImage(imageUrl) {
   const {
     data: { text },
   } = await Tesseract.recognize(imageUrl, "eng");
+
   return text;
 }
+
 async function extractTextFromImageForOpenRouter(imageUrl) {
   const {
     data: { text },
   } = await Tesseract.recognize(imageUrl, "eng");
+
   return text
     .replace(/\n{2,}/g, "\n")
     .replace(/[^\x20-\x7E\n]/g, "")
     .slice(0, 12000);
 }
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+// -------------------------------------
+// OPENROUTER CLIENT
+// -------------------------------------
+const client = new OpenAI({
+  apiKey: process.env.THEAPIKEYIS
+});
+
+// -------------------------------------
+// AI FUNCTION
+// -------------------------------------
 
 async function getQuestionsAndAnswers(ocrText) {
-  const model = genAI.getGenerativeModel({
-    model: "gemini-flash-lite-latest", // free text model
+  const prompt = `
+You are an expert university exam paper solver.
+
+The following text is extracted using OCR from a question paper:
+
+${ocrText}
+
+Your Tasks:
+
+1. Ignore headers, codes, signatures, instructions.
+2. Extract only real questions.
+3. Solve EVERY question.
+4. Give exam-ready detailed answers.
+5. Add sequential number.
+6. Add unique id like q_ab123.
+7. Return JSON only.
+
+Answer Rules:
+
+- 2 mark question = 3 to 5 lines
+- 5 mark question = 8 to 12 lines
+- 10 mark question = detailed explanation with paragraphs
+- Use simple student-friendly language
+- Use bullet points when useful
+- Add examples where useful
+- For theory subjects explain clearly
+- For coding/math give step-by-step solution
+
+Return Format:
+
+{
+  "questions": [
+    {
+      "question_number": 1,
+      "question_id": "q_xxxx",
+      "question_text": "Question here",
+      "solution": "Detailed answer here"
+    }
+  ]
+}
+
+Rules:
+- Output valid JSON only
+- No markdown
+- No extra text
+`;
+
+  const completion = await client.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages: [
+      {
+        role: "user",
+        content: prompt
+      }
+    ],
+    temperature: 0.6,
+    max_tokens: 5000
   });
 
-  const prompt1 = `You are an assistant for processing and solving exam question papers.
-
-  Input:
-  The following text is extracted using OCR from a question paper:
-  ${ocrText}
-  Your Tasks:
-  1. Ignore headers, paper codes, instructions, etc.
-  2. Extract only the questions.
-  3. Solve each question step by step.
-  4. Assign each question:
-      - a sequential question number
-      - a unique ID (format: "q_<random_string>")
-  5. Solve each question step by step.
-  6. Return the final response strictly in the following JSON format:
-
-  {
-    "questions": [
-      {
-        "question_number": <number>,
-        "question_id": "q_<unique_id>",
-        "question_text": "<cleaned_question_text>",
-        "solution": "<step_by_step_solution>"
-      } 
-    ]
-  }
-
-  Rules:
-  - Output must be valid JSON.
-  - Do not include any text outside the JSON.
-  - Ensure unique_id is random for each question.
-  - Ensure question_text is clean and complete.
-  - Solutions must be correct, clear, and step-by-step.
-  `;
-
-  const result = await model.generateContent([{ text: prompt1 }]);
-  return result.response.text();
+  return completion.choices[0].message.content;
 }
+
+// -------------------------------------
+// CONTROLLER
+// -------------------------------------
+
 const solvePaper = asyncErrorHandler(async (req, res, next) => {
   try {
     const { imageUrl } = req.body;
-    if (!imageUrl) return res.status(400).json({ error: "Image URL required" });
 
-    const ocrText = await extractTextFromImage(imageUrl);
+    if (!imageUrl) {
+      return res.status(400).json({
+        error: "Image URL required",
+      });
+    }
+
+    const ocrText = await extractTextFromImageForOpenRouter(imageUrl);
+    console.log("OCR Text:", ocrText);
+
     const solution = await getQuestionsAndAnswers(ocrText);
+    console.log("AI Solution:", solution);
 
-    res.status(200).json({ solution, message: "paper solved successfully" });
+    res.status(200).json({
+      success: true,
+      solution,
+      message: "Paper solved successfully",
+    });
   } catch (err) {
     console.error(err);
-    res
-      .status(500)
-      .json({ error: "Something went wrong", details: err.message });
+
+    res.status(500).json({
+      success: false,
+      error: "Something went wrong",
+      details: err.message,
+    });
   }
 });
 

@@ -14,8 +14,12 @@ import { nodeCronFunction } from "./automation/nodeCron.js";
 //! cors policy and code one
 app.use(
   cors({
+<<<<<<< HEAD
     origin: [ process.env.CLIENT_URL,
     process.env.PROD_CLIENT_URL_NET,process.env.PROD_CLIENT_URL_REN],
+=======
+    origin: [process.env.CLIENT_URL, process.env.PROD_CLIENT_URL_NET, process.env.PROD_CLIENT_URL_REN, process.env.FRONTEND_URL, process.env.FRONTEND_URL1 ],
+>>>>>>> 310a1ba (My latest changes)
     methods: ["GET", "POST", "DELETE", "PUT"],
     credentials: true,
     allowedHeaders: ["Content-Type", "Authorization"]

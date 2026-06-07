@@ -16,8 +16,8 @@ export const sendToken = async (user, res) => {
       httpOnly: true,
       // secure: false, // ✅ set to true ONLY in production with HTTPS
       // sameSite: "Lax", // ✅ prevent CSRF in most case
-  secure: true,          // REQUIRED on HTTPS
-  sameSite: "none",      // REQUIRED for cross-site
+      secure: true, // REQUIRED on HTTPS
+      sameSite: "none", // REQUIRED for cross-site
     })
     .json({
       token,

@@ -19,7 +19,7 @@ export const sendMail = async ({message, email, subject, next}) => {
       subject: subject,
       html: message,
     };
-
+ 
     await transporter.sendMail(option);
     
   } catch (error) {

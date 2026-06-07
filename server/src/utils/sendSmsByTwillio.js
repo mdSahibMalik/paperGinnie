@@ -10,7 +10,7 @@ const sendMobileSmsByTwilio = async (mobileNumber, code) => {
     const message = await client.messages.create({
       body: `Verify your mobile for paperGinnie ${code}`,
       from: TWILIO_PHONE_NUMBER,
-      to: `+91${mobileNumber}`,
+      to: `+91 ${mobileNumber}`,
     });
     return message;
     

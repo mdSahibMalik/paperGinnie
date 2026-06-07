@@ -94,3 +94,6 @@ return resetToken;
 }
 
 export const User = mongoose.model("User", userSchema);
+
+
+//mongodb+srv://paperStore:N4scBrSSoVP1KyZn@paperstore.b8bfxwx.mongodb.net/PaperStore?appName=paperstore
